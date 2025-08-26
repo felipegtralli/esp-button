@@ -2,9 +2,14 @@
 
 #include <string.h>
 
+#include "freertos/semphr.h"
 #include "esp_log.h"
 
 static const char* TAG = "button";
+
+static bool isr_service_installed = false;
+static uint32_t button_count = 0;
+static SemaphoreHandle_t button_mutex = NULL;
 
 typedef struct button_t {
     gpio_num_t pin;
@@ -27,10 +32,25 @@ static void IRAM_ATTR button_isr_handler(void* arg) {
     xQueueSendFromISR(button->event_queue, &event, NULL);
 }
 
+static esp_err_t mutex_init() {
+    if(!button_mutex) {
+        button_mutex = xSemaphoreCreateMutex();
+        if(!button_mutex) {
+            ESP_LOGE(TAG, "Failed to create mutex");
+            return ESP_ERR_NO_MEM;
+        }
+    }
+    return ESP_OK;
+}
+
 esp_err_t button_init(button_handle_t* button_handle, const button_config_t* button_config) {
     if(!button_handle || !button_config) {
         ESP_LOGE(TAG, "Invalid argument");
         return ESP_ERR_INVALID_ARG;
+    }
+    
+    if(mutex_init() != ESP_OK) {
+        return ESP_ERR_NO_MEM;
     }
 
     button_t* button = (button_t*) (malloc(sizeof(button_t)));
@@ -41,7 +61,7 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
     memset(button, 0, sizeof(button_t));
 
     button->pin = button_config->gpio_pin;
-    button->debounce_ticks = pdMS_TO_TICKS(button_config->debounce_ms);
+    button->debounce_ticks = (!button_config->debounce_ms) ? pdMS_TO_TICKS(BUTTON_DEBOUNCE_DEFAULT_MS) : pdMS_TO_TICKS(button_config->debounce_ms);
 
     gpio_config_t gpio_cfg = {
         .pin_bit_mask  = (1ULL << button->pin),
@@ -84,46 +104,79 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
         button->idle_state = button_config->idle_state;
     }
 
-    button->event_queue = xQueueCreate(10, sizeof(button_event_type_t));
+    button->event_queue = (!button_config->queue_size) ? xQueueCreate(BUTTON_QUEUE_SIZE_DEFAULT, sizeof(button_event_type_t)) : xQueueCreate(button_config->queue_size, sizeof(button_event_type_t));
     if(!button->event_queue) {
         ESP_LOGE(TAG, "Failed to create event queue for gpio %d", button->pin);
         goto ERROR;
     }
 
-    ret = gpio_install_isr_service(0);
-    if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to install ISR service");
-        goto ERROR;
-    }
-    ret = gpio_isr_handler_add(button->pin, button_isr_handler, button);
-    if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to add ISR handler for gpio %d", button->pin);
+    bool mutex_taken = false;
+    if(xSemaphoreTake(button_mutex, portMAX_DELAY) == pdTRUE) {
+        mutex_taken = true;
+        if(!isr_service_installed) {
+            ret = gpio_install_isr_service(0);
+            if(ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to install ISR service");
+                goto ERROR;
+            }
+            isr_service_installed = true;
+        }    
+        ret = gpio_isr_handler_add(button->pin, button_isr_handler, button);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to add ISR handler for gpio %d", button->pin);
+            goto ERROR;
+        }
+
+        button_count++;
+        xSemaphoreGive(button_mutex);
+        mutex_taken = false;
+    } else {
+        ESP_LOGE(TAG, "Failed to take mutex");
+        ret = ESP_ERR_TIMEOUT;
         goto ERROR;
     }
 
     *button_handle = button;
+    ESP_LOGI(TAG, "Button initialized on GPIO %d", button->pin);
     return ESP_OK;
 
 ERROR:
+    if(button->event_queue) {
+        vQueueDelete(button->event_queue);
+    }
+    if(mutex_taken) {
+        xSemaphoreGive(button_mutex);
+    }
     free(button);
     return ret;
 }
 
-esp_err_t button_free(button_handle_t button_handle) {
-    if(!button_handle) {
+esp_err_t button_free(button_handle_t* button_handle) {
+    if(!button_handle || !*button_handle) {
         ESP_LOGE(TAG, "Invalid button handle");
         return ESP_ERR_INVALID_ARG;
     }
-    button_t* button = (button_t*) button_handle;
+    button_t* button = (button_t*) *button_handle;
 
     esp_err_t ret = gpio_isr_handler_remove(button->pin);
     if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to remove ISR handler for gpio %d", button->pin);
-        return ret; 
+        ESP_LOGW(TAG, "Failed to remove ISR handler for gpio %d", button->pin);
     }
 
     if(button->event_queue) {
         vQueueDelete(button->event_queue);
+    }
+
+    if(xSemaphoreTake(button_mutex, portMAX_DELAY) == pdTRUE) {
+        button_count--;
+        
+        if(!button_count && isr_service_installed) {
+            gpio_uninstall_isr_service();
+            isr_service_installed = false;
+        }
+        xSemaphoreGive(button_mutex);
+    } else {
+        ESP_LOGW(TAG, "Failed to take mutex during free");
     }
 
     ret = gpio_reset_pin(button->pin);
@@ -131,7 +184,13 @@ esp_err_t button_free(button_handle_t button_handle) {
         ESP_LOGW(TAG, "Failed to reset gpio %d", button->pin);
     }
 
+    if(!button_count && button_mutex) {
+        vSemaphoreDelete(button_mutex);
+        button_mutex = NULL;
+    }
+
     free(button);
+    *button_handle = NULL;
     return ESP_OK;
 }
 
