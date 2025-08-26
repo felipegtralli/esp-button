@@ -1,5 +1,7 @@
 #pragma once
 
+#include "generic-button-events.h"
+
 #include "freertos/FreeRTOS.h"
 
 #include "esp_err.h"
@@ -7,11 +9,6 @@
 
 #define BUTTON_QUEUE_SIZE_DEFAULT 10
 #define BUTTON_DEBOUNCE_DEFAULT_MS 20
-
-typedef enum {
-    BUTTON_EVENT_PRESS,
-    BUTTON_EVENT_RELEASE
-} button_event_type_t;
 
 typedef enum {
     BUTTON_STATE_IDLE_LOW,

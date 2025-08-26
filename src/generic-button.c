@@ -28,7 +28,10 @@ static void IRAM_ATTR button_isr_handler(void* arg) {
     }
     button->last_interrupt_time = current_time;
 
-    button_event_type_t event = (gpio_get_level(button->pin) != button->idle_state) ? BUTTON_EVENT_PRESS : BUTTON_EVENT_RELEASE;
+    button_event_t event = {
+        .gpio_pin = button->pin,
+        .type = (gpio_get_level(button->pin) != button->idle_state) ? BUTTON_EVENT_PRESS : BUTTON_EVENT_RELEASE
+    };
     xQueueSendFromISR(button->event_queue, &event, NULL);
 }
 
@@ -52,6 +55,7 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
     if(mutex_init() != ESP_OK) {
         return ESP_ERR_NO_MEM;
     }
+    bool mutex_taken = false;
 
     button_t* button = (button_t*) (malloc(sizeof(button_t)));
     if(!button) {
@@ -104,13 +108,12 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
         button->idle_state = button_config->idle_state;
     }
 
-    button->event_queue = (!button_config->queue_size) ? xQueueCreate(BUTTON_QUEUE_SIZE_DEFAULT, sizeof(button_event_type_t)) : xQueueCreate(button_config->queue_size, sizeof(button_event_type_t));
+    button->event_queue = (!button_config->queue_size) ? xQueueCreate(BUTTON_QUEUE_SIZE_DEFAULT, sizeof(button_event_t)) : xQueueCreate(button_config->queue_size, sizeof(button_event_t));
     if(!button->event_queue) {
         ESP_LOGE(TAG, "Failed to create event queue for gpio %d", button->pin);
         goto ERROR;
     }
 
-    bool mutex_taken = false;
     if(xSemaphoreTake(button_mutex, portMAX_DELAY) == pdTRUE) {
         mutex_taken = true;
         if(!isr_service_installed) {
