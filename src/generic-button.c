@@ -9,6 +9,9 @@
     #define BUTTON_DEBUG
 #endif
 
+#define BUTTON_TASK_STACK_SIZE CONFIG_BUTTON_TASK_STACK_SIZE
+#define BUTTON_TASK_PRIORITY CONFIG_BUTTON_TASK_PRIORITY
+
 #define BUTTON_INIT_FLAG_ISR_HANDLER_ADDED (1 << 0)
 #define BUTTON_INIT_FLAG_MUTEX_TAKEN (1 << 1)
 #define BUTTON_INIT_FLAG_COUNT_INCREMENTED (1 << 2)
@@ -143,7 +146,7 @@ static esp_err_t button_queue_init() {
 
 static esp_err_t button_task_init() {
     if(!button_event_task_handle) {
-        if(xTaskCreate(button_event_task, "button_event_task", 3072, NULL, tskIDLE_PRIORITY + 1, &button_event_task_handle) != pdPASS) {
+        if(xTaskCreate(button_event_task, "button_event_task", BUTTON_TASK_STACK_SIZE, NULL, BUTTON_TASK_PRIORITY, &button_event_task_handle) != pdPASS) {
             ESP_LOGE(TAG, "Failed to create button event task");
             return ESP_ERR_NO_MEM;
         }

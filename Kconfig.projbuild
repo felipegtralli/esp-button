@@ -1,0 +1,19 @@
+menu "Generic Button Configuration"
+
+	config BUTTON_TASK_STACK_SIZE
+		int "Button event task stack size"
+		default 3072
+		range 1024 16384
+		help
+			Stack size for the button event processing task in bytes.
+			Default is 3072.
+
+	config BUTTON_TASK_PRIORITY
+		int "Button event task priority"
+		default 1
+		range 0 20
+		help
+			Priority of the button event processing task.
+			Default is 1 (tskIDLE_PRIORITY + 1).
+
+endmenu
