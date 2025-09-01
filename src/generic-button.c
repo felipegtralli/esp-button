@@ -237,6 +237,10 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
     if(button_config->idle_state == BUTTON_STATE_IDLE_DEFAULT) {
         int level = gpio_get_level(button->pin);
         button->idle_state = (level) ? BUTTON_STATE_IDLE_HIGH : BUTTON_STATE_IDLE_LOW;
+        
+        #ifdef BUTTON_DEBUG
+            ESP_LOGD(TAG, "Detected idle state for GPIO %d as %s", button->pin, (button->idle_state == BUTTON_STATE_IDLE_HIGH) ? "HIGH" : "LOW");
+        #endif
     } else {
         button->idle_state = button_config->idle_state;
     }
@@ -267,6 +271,10 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
         button_cleanup_on_error(button, init_flags);
         return ret;
     }
+
+    #ifdef BUTTON_DEBUG
+        ESP_LOGD(TAG, "Button count incremented to %lu", button_count);
+    #endif
 
     *button_handle = button;
     ESP_LOGI(TAG, "Button initialized on GPIO %d", button->pin);
@@ -317,6 +325,10 @@ esp_err_t button_free(button_handle_t* button_handle) {
 
     free(button);
     *button_handle = NULL;
+
+    #ifdef BUTTON_DEBUG
+        ESP_LOGD(TAG, "Button count decremented to %lu", button_count);
+    #endif
 
     if(mutex_delete) {
         uint8_t loop_count = 0;
