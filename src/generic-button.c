@@ -88,17 +88,6 @@ static void button_event_task(void* arg) {
     vTaskDelete(NULL);
 }
 
-static esp_err_t button_mutex_init() {
-    if(!button_mutex) {
-        button_mutex = xSemaphoreCreateMutex();
-        if(!button_mutex) {
-            ESP_LOGE(TAG, "Failed to create mutex");
-            return ESP_ERR_NO_MEM;
-        }
-    }
-    return ESP_OK;
-}
-
 static esp_err_t button_config_gpio(button_t* button, const button_config_t* button_config) {
     gpio_config_t gpio_cfg = {
         .pin_bit_mask  = (1ULL << button->pin),
@@ -157,6 +146,17 @@ static esp_err_t button_task_init() {
         #ifdef BUTTON_DEBUG
             ESP_LOGD(TAG, "Button event task created. Stack size %d, Priority %d", BUTTON_TASK_STACK_SIZE, BUTTON_TASK_PRIORITY);
         #endif
+    }
+    return ESP_OK;
+}
+
+static esp_err_t button_mutex_init() {
+    if(!button_mutex) {
+        button_mutex = xSemaphoreCreateMutex();
+        if(!button_mutex) {
+            ESP_LOGE(TAG, "Failed to create mutex");
+            return ESP_ERR_NO_MEM;
+        }
     }
     return ESP_OK;
 }
@@ -221,10 +221,6 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
         ESP_LOGE(TAG, "Invalid argument");
         return ESP_ERR_INVALID_ARG;
     }
-    
-    if(button_mutex_init() != ESP_OK) {
-        return ESP_ERR_NO_MEM;
-    }
 
     button_t* button = (button_t*) (malloc(sizeof(button_t)));
     if(!button) {
@@ -265,6 +261,12 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
     }
 
     ret = button_queue_init();
+    if(ret != ESP_OK) {
+        button_cleanup_on_error(button, init_flags);
+        return ret;
+    }
+
+    ret = button_mutex_init();
     if(ret != ESP_OK) {
         button_cleanup_on_error(button, init_flags);
         return ret;
