@@ -11,14 +11,13 @@
 
 #define BUTTON_TASK_STACK_SIZE CONFIG_BUTTON_TASK_STACK_SIZE
 #define BUTTON_TASK_PRIORITY CONFIG_BUTTON_TASK_PRIORITY
+#define BUTTON_QUEUE_SIZE CONFIG_BUTTON_QUEUE_SIZE
 
 #define BUTTON_INIT_FLAG_ISR_HANDLER_ADDED (1 << 0)
 #define BUTTON_INIT_FLAG_MUTEX_TAKEN (1 << 1)
 #define BUTTON_INIT_FLAG_COUNT_INCREMENTED (1 << 2)
 
 #define MAX_LOOP 100
-
-#define BUTTON_QUEUE_SIZE_DEFAULT 10
 
 static const char* TAG = "button";
 
@@ -135,11 +134,15 @@ static esp_err_t button_config_gpio(button_t* button, const button_config_t* but
 
 static esp_err_t button_queue_init() {
     if(!button_event_queue) {
-        button_event_queue = xQueueCreate(BUTTON_QUEUE_SIZE_DEFAULT, sizeof(button_global_event_t));
+        button_event_queue = xQueueCreate(BUTTON_QUEUE_SIZE, sizeof(button_global_event_t));
         if(!button_event_queue) {
             ESP_LOGE(TAG, "Failed to create button event queue");
             return ESP_ERR_NO_MEM;
         }
+
+        #ifdef BUTTON_DEBUG
+            ESP_LOGD(TAG, "Button event queue created. Size %d", BUTTON_QUEUE_SIZE);
+        #endif
     }
     return ESP_OK;
 }
@@ -150,6 +153,10 @@ static esp_err_t button_task_init() {
             ESP_LOGE(TAG, "Failed to create button event task");
             return ESP_ERR_NO_MEM;
         }
+
+        #ifdef BUTTON_DEBUG
+            ESP_LOGD(TAG, "Button event task created. Stack size %d, Priority %d", BUTTON_TASK_STACK_SIZE, BUTTON_TASK_PRIORITY);
+        #endif
     }
     return ESP_OK;
 }

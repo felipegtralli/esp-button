@@ -16,4 +16,12 @@ menu "Generic Button Configuration"
 			Priority of the button event processing task.
 			Default is 1 (tskIDLE_PRIORITY + 1).
 
+	config BUTTON_QUEUE_SIZE
+		int "Button event queue size"
+		default 10
+		range 1 50
+		help
+			Size of the button event queue.
+			Default is 10.
+
 endmenu
