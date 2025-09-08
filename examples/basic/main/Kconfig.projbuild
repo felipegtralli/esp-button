@@ -1,0 +1,10 @@
+menu "Example Configuration"
+
+    config BUTTON_GPIO_NUM
+        int "Button GPIO number"
+        default 0
+        help
+            GPIO number where the button is connected.
+            Default is 0 (BOOT button on most ESP32 dev boards).
+    
+endmenu
