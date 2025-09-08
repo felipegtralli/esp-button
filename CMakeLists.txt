@@ -1,3 +1,3 @@
-idf_component_register(SRCS "src/generic-button.c"
+idf_component_register(SRCS "src/esp_button.c"
                     INCLUDE_DIRS "include"
                     REQUIRES driver)

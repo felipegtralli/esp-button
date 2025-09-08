@@ -1,4 +1,4 @@
-menu "Generic Button Configuration"
+menu "ESP Button Configuration"
 
 	config BUTTON_TASK_STACK_SIZE
 		int "Button event task stack size"
