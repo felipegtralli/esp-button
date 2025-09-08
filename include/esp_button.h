@@ -35,7 +35,7 @@ typedef struct button_t* button_handle_t;
  * @note Callback is invoked from the button event task context, not ISR.
  * 
  */
-typedef void (*button_callback_t)(button_handle_t button, button_event_t* event, void* ctx);
+typedef void (*button_callback_t)(button_handle_t button, const button_event_t* event, void* ctx);
 
 /**
  * @brief Button configuration structure
