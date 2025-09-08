@@ -14,7 +14,7 @@ FreeRTOS-based button driver for ESP32, designed to handle GPIO button presses w
 ## How to Use
 ### Hardware
 - **ESP32 Board**: Any ESP32-based development board.
-- **Button **: Any button.
+- **Button**: Any Button.
 
 ### Connection Diagram
 
