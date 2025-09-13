@@ -1,19 +1,20 @@
 #include "esp_button.h"
 
+#include "freertos/FreeRTOS.h"
 #include "esp_log.h"
 
 #define BUTTON_GPIO_NUM CONFIG_BUTTON_GPIO_NUM
 
-static const char* TAG = "basic_example";
+static const char TAG[] = "basic_example";
 
 // User-defined callback function to handle button events
 static void button_callback(button_handle_t button, const button_event_t* event, void* ctx) {
     switch(event->type) {
         case BUTTON_EVENT_PRESS:
-            ESP_LOGI(TAG, "Button pressed GPIO %d", event->gpio_pin);
+            ESP_LOGI(TAG, "Button pressed GPIO %d. Timestamp: %lu", event->gpio_pin, pdTICKS_TO_MS(event->timestamp));
             break;
         case BUTTON_EVENT_RELEASE:
-            ESP_LOGI(TAG, "Button released GPIO %d", event->gpio_pin);
+            ESP_LOGI(TAG, "Button released GPIO %d. Timestamp: %lu", event->gpio_pin, pdTICKS_TO_MS(event->timestamp));
             break;
         default:
             ESP_LOGW(TAG, "Unknown event");

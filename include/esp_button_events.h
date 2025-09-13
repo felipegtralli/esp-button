@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ESP_BUTTON_EVENTS_H
+#define ESP_BUTTON_EVENTS_H
 
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
@@ -28,3 +29,5 @@ typedef struct {
     button_event_type_t type;
     TickType_t timestamp;
 } button_event_t;
+
+#endif // ESP_BUTTON_EVENTS_H

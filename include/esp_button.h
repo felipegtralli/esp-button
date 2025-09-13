@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ESP_BUTTON_H
+#define ESP_BUTTON_H
 
 #include "esp_button_events.h"
 
@@ -78,6 +79,9 @@ esp_err_t button_init(button_handle_t* button_handle, const button_config_t* but
  *      - ESP_ERR_INVALID_ARG if invalid button handle
  *      - ESP_ERR_TIMEOUT if button event task did not terminate in time (resources leaked)
  *      - Other error codes from underlying functions
+ *       
+ * @note If the button event task does not terminate in time, resources may be leaked and ESP_ERR_TIMEOUT will be returned.
+ *       All cleanup is attempted even if errors occur; the first error is returned.
  */
 esp_err_t button_free(button_handle_t* button_handle);
 
@@ -94,3 +98,5 @@ esp_err_t button_free(button_handle_t* button_handle);
  * 
  */
 int button_get_level(button_handle_t button_handle);
+
+#endif // ESP_BUTTON_H
